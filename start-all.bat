@@ -1,0 +1,16 @@
+@echo off
+echo Lancement du projet SOA Marketplace...
+
+echo Demarrage du service Users...
+start cmd /k "cd users-service && node index.js"
+
+echo Demarrage du service Products...
+start cmd /k "cd products-service && node index.js"
+
+echo Demarrage du service Orders...
+start cmd /k "cd orders-service && node index.js"
+
+echo Demarrage de l'API Gateway...
+start cmd /k "cd api-gateway && node index.js"
+
+echo Tous les services sont lances dans des fenetres separees !
