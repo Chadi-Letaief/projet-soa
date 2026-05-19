@@ -5,6 +5,8 @@ package orders;
 service OrderService {
   rpc CreateOrder (CreateOrderRequest) returns (OrderResponse);
   rpc GetOrder (GetOrderRequest) returns (OrderResponse);
+  rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (OrderResponse);
+  rpc DeleteOrder (DeleteOrderRequest) returns (DeleteOrderResponse);
 }
 
 message CreateOrderRequest {
@@ -23,4 +25,17 @@ message OrderResponse {
   string product_id = 3;
   int32 quantity = 4;
   string status = 5;
+}
+
+message UpdateOrderStatusRequest {
+  string id = 1;
+  string status = 2;
+}
+
+message DeleteOrderRequest {
+  string id = 1;
+}
+
+message DeleteOrderResponse {
+  bool success = 1;
 }

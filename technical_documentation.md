@@ -119,6 +119,13 @@ Le client communique avec l'API Gateway via des routes REST classiques. Les donn
 *   **Récupérer un utilisateur :**
     *   `GET /users/:id`
     *   *Response (JSON) :* `{ "id": "1", "name": "Rami Nouri", "email": "rami@example.com" }`
+*   **Mettre à jour un utilisateur (PUT) :**
+    *   `PUT /users/:id`
+    *   *Request Body (JSON) :* `{ "name": "Rami Nouri Updated", "email": "rami.new@example.com" }`
+    *   *Response (JSON) :* `{ "id": "1", "name": "Rami Nouri Updated", "email": "rami.new@example.com" }`
+*   **Supprimer un utilisateur (DELETE) :**
+    *   `DELETE /users/:id`
+    *   *Response (JSON) :* `{ "success": true }`
 
 ### 4.2. Gestion du Catalogue de Produits
 *   **Créer un produit :**
@@ -128,6 +135,13 @@ Le client communique avec l'API Gateway via des routes REST classiques. Les donn
 *   **Lister et filtrer les produits :**
     *   `GET /products` ou `GET /products?q=Ordinateur`
     *   *Response (JSON) :* `{ "products": [ { "id": "p39dk1", "name": "Ordinateur", ... } ] }`
+*   **Mettre à jour un produit (PUT) :**
+    *   `PUT /products/:id`
+    *   *Request Body (JSON) :* `{ "name": "Ordinateur Pro", "description": "32GB RAM", "price": 1299.99, "stock": 15 }`
+    *   *Response (JSON) :* `{ "id": "p39dk1", "name": "Ordinateur Pro", "description": "32GB RAM", "price": 1299.99, "stock": 15 }`
+*   **Supprimer un produit (DELETE) :**
+    *   `DELETE /products/:id`
+    *   *Response (JSON) :* `{ "success": true }`
 
 ### 4.3. Gestion des Commandes
 *   **Passer une commande :**
@@ -136,6 +150,13 @@ Le client communique avec l'API Gateway via des routes REST classiques. Les donn
     *   *Response (JSON) :* `{ "id": "o83l9a", "user_id": "1", "product_id": "p39dk1", "quantity": 2, "status": "PENDING" }`
 *   **Consulter une commande :**
     *   `GET /orders/:id`
+*   **Mettre à jour le statut d'une commande (PUT) :**
+    *   `PUT /orders/:id`
+    *   *Request Body (JSON) :* `{ "status": "COMPLETED" }`
+    *   *Response (JSON) :* `{ "id": "o83l9a", "user_id": "1", "product_id": "p39dk1", "quantity": 2, "status": "COMPLETED" }`
+*   **Supprimer/Annuler une commande (DELETE) :**
+    *   `DELETE /orders/:id`
+    *   *Response (JSON) :* `{ "success": true }` *(Émet également `ORDER_CANCELLED` sur Kafka)*
 
 ---
 
@@ -183,6 +204,12 @@ type Mutation {
   createUser(name: String!, email: String!): User
   createProduct(name: String!, description: String!, price: Float!, stock: Int!): Product
   createOrder(user_id: String!, product_id: String!, quantity: Int!): Order
+  updateUser(id: String!, name: String!, email: String!): User
+  updateProduct(id: String!, name: String!, description: String!, price: Float!, stock: Int!): Product
+  updateOrderStatus(id: String!, status: String!): Order
+  deleteUser(id: String!): Boolean
+  deleteProduct(id: String!): Boolean
+  deleteOrder(id: String!): Boolean
 }
 ```
 
@@ -194,18 +221,34 @@ Pour assurer l'autonomie et le couplage faible entre le service de commande (`or
 
 ### Description des flux événementiels
 *   **Topic utilisé** : `order-events`
-*   **Producteur** : `orders-service` (dès qu'une commande est créée, elle est poussée dans le topic en tant que message sérialisé JSON).
-*   **Consommateur** : `products-service` (abonnée permanente au topic `order-events`). Elle traite chaque commande entrante pour réduire le stock physiquement en base NoSQL.
+*   **Flux Principal (`ORDER_CREATED`)** :
+    *   *Producteur* : `orders-service` (lors de la création d'une commande).
+    *   *Consommateur* : `products-service` (réduit le stock de RxDB correspondant de la quantité commandée).
+*   **Flux Restauration (`ORDER_CANCELLED`)** :
+    *   *Producteur* : `orders-service` (lors de la suppression/annulation d'une commande via HTTP `DELETE`).
+    *   *Consommateur* : `products-service` (re-crédite le stock de RxDB correspondant de la quantité annulée).
 
-### Structure du message (`ORDER_CREATED`) :
+### Structures des messages JSON :
+
+#### 1. Événement de création (`ORDER_CREATED`) :
 ```json
 {
   "type": "ORDER_CREATED",
   "orderId": "o83l9a",
   "productId": "p39dk1",
   "userId": "1",
-  "quantity": 2,
-  "timestamp": "2026-05-19T08:00:00.000Z"
+  "quantity": 2
+}
+```
+
+#### 2. Événement d'annulation (`ORDER_CANCELLED`) :
+```json
+{
+  "type": "ORDER_CANCELLED",
+  "orderId": "o83l9a",
+  "productId": "p39dk1",
+  "userId": "1",
+  "quantity": 2
 }
 ```
 

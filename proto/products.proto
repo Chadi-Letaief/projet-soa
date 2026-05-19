@@ -6,6 +6,8 @@ service ProductService {
   rpc GetProduct (GetProductRequest) returns (ProductResponse);
   rpc SearchProducts (SearchProductsRequest) returns (ProductListResponse);
   rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
+  rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
 }
 
 message GetProductRequest {
@@ -33,4 +35,20 @@ message ProductResponse {
 
 message ProductListResponse {
   repeated ProductResponse products = 1;
+}
+
+message UpdateProductRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  float price = 4;
+  int32 stock = 5;
+}
+
+message DeleteProductRequest {
+  string id = 1;
+}
+
+message DeleteProductResponse {
+  bool success = 1;
 }

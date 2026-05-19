@@ -54,6 +54,38 @@ server.addService(usersProto.UserService.service, {
       }
     );
   },
+  updateUser: (call, callback) => {
+    const user = call.request;
+    db.run(
+      "UPDATE users SET name = ?, email = ? WHERE id = ?",
+      [user.name, user.email, user.id],
+      function (err) {
+        if (err) {
+          callback({ code: grpc.status.INTERNAL, details: 'Internal Server Error' });
+        } else if (this.changes === 0) {
+          callback({ code: grpc.status.NOT_FOUND, details: 'User not found' });
+        } else {
+          callback(null, { id: user.id, name: user.name, email: user.email });
+        }
+      }
+    );
+  },
+  deleteUser: (call, callback) => {
+    const userId = call.request.id;
+    db.run(
+      "DELETE FROM users WHERE id = ?",
+      [userId],
+      function (err) {
+        if (err) {
+          callback({ code: grpc.status.INTERNAL, details: 'Internal Server Error' });
+        } else if (this.changes === 0) {
+          callback(null, { success: false });
+        } else {
+          callback(null, { success: true });
+        }
+      }
+    );
+  },
 });
 
 const PORT = '50051';

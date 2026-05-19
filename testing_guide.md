@@ -143,7 +143,53 @@ mutation CreateOrder {
 
 ---
 
+## 3. Mise à jour (PUT) et Suppression (DELETE)
+
+Vous pouvez désormais modifier et supprimer vos entités via REST ou GraphQL.
+
+### 3.1 Exemples REST API :
+
+#### 🔄 Mettre à jour (PUT) :
+*   **Modifier un utilisateur :**
+    *   `PUT http://localhost:3000/users/:id`
+    *   Body (JSON) : `{ "name": "Jane Smith", "email": "janesmith@example.com" }`
+*   **Modifier un produit :**
+    *   `PUT http://localhost:3000/products/:id`
+    *   Body (JSON) : `{ "name": "Clavier Pro", "description": "Modèle mécanique", "price": 99.99, "stock": 15 }`
+*   **Modifier le statut d'une commande :**
+    *   `PUT http://localhost:3000/orders/:id`
+    *   Body (JSON) : `{ "status": "COMPLETED" }`
+
+#### ❌ Supprimer (DELETE) :
+*   **Supprimer un utilisateur :** `DELETE http://localhost:3000/users/:id`
+*   **Supprimer un produit :** `DELETE http://localhost:3000/products/:id`
+*   **Annuler/Supprimer une commande :** `DELETE http://localhost:3000/orders/:id`
+    *   *Note : Supprimer une commande émet automatiquement un événement `ORDER_CANCELLED` sur Kafka, ce qui restitue instantanément le stock au produit concerné !*
+
+### 3.2 Exemples GraphQL mutations :
+```graphql
+# Mettre à jour un produit
+mutation UpdateProduct {
+  updateProduct(id: "ID_PRODUIT", name: "Clavier Pro", description: "Mécanique", price: 99.99, stock: 15) {
+    id
+    name
+    stock
+  }
+}
+
+# Supprimer un produit
+mutation DeleteProduct {
+  deleteProduct(id: "ID_PRODUIT")
+}
+```
+
+---
+
 ## 💡 Conseils pour votre Présentation Académique
 Pour impressionner vos jurys/professeurs, montrez le découpage et le couplage faible :
 1.  **Démontrez la tolérance aux pannes :** Éteignez le service **Products** (fermez sa fenêtre). Passez une commande. La commande réussira toujours (car le service Orders est en ligne). Rallumez ensuite le service **Products** : il consommera le message Kafka en attente et mettra le stock à jour rétroactivement ! C'est le principe même de la résilience asynchrone de la SOA.
-2.  **Montrez la diversité des bases de données :** Expliquez que vous utilisez du **Relationnel (SQL)** pour les utilisateurs et commandes (cohérence forte) et du **NoSQL (RxDB)** pour les produits (flexibilité).
+2.  **Démontrez la restauration automatique des stocks (Flux Kafka inverse) :** 
+    *   Passez une commande pour réduire le stock d'un produit.
+    *   Faites une requête `DELETE /orders/:id`.
+    *   Regardez le stock du produit se **ré-incrémenter automatiquement** grâce à l'événement `ORDER_CANCELLED` émis sur Kafka et capturé par le service Products !
+3.  **Montrez la diversité des bases de données :** Expliquez que vous utilisez du **Relationnel (SQL)** pour les utilisateurs et commandes (cohérence forte) et du **NoSQL (RxDB)** pour les produits (flexibilité).

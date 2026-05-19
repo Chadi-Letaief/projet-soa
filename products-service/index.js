@@ -25,12 +25,19 @@ const initKafka = async (db) => {
         const event = JSON.parse(message.value.toString());
         if (event.type === 'ORDER_CREATED') {
           console.log(`Received ORDER_CREATED for product ${event.productId}`);
-          // Reduce stock logic here if needed
           const product = await db.products.findOne({ selector: { id: event.productId } }).exec();
           if (product) {
              const newStock = (product.stock || 0) - event.quantity;
              await product.incrementalPatch({ stock: newStock });
              console.log(`Stock for product ${event.productId} updated to ${newStock}`);
+          }
+        } else if (event.type === 'ORDER_CANCELLED') {
+          console.log(`Received ORDER_CANCELLED for product ${event.productId}`);
+          const product = await db.products.findOne({ selector: { id: event.productId } }).exec();
+          if (product) {
+             const newStock = (product.stock || 0) + event.quantity;
+             await product.incrementalPatch({ stock: newStock });
+             console.log(`Stock for product ${event.productId} restored to ${newStock}`);
           }
         }
       },
@@ -65,6 +72,31 @@ const startServer = async () => {
       const newProduct = { id, name: p.name, description: p.description, price: p.price, stock: p.stock || 0 };
       await db.products.insert(newProduct);
       callback(null, newProduct);
+    },
+    updateProduct: async (call, callback) => {
+      const p = call.request;
+      const product = await db.products.findOne({ selector: { id: p.id } }).exec();
+      if (product) {
+        await product.incrementalPatch({
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          stock: p.stock
+        });
+        callback(null, product.toJSON());
+      } else {
+        callback({ code: grpc.status.NOT_FOUND, details: 'Product not found' });
+      }
+    },
+    deleteProduct: async (call, callback) => {
+      const productId = call.request.id;
+      const product = await db.products.findOne({ selector: { id: productId } }).exec();
+      if (product) {
+        await product.remove();
+        callback(null, { success: true });
+      } else {
+        callback(null, { success: false });
+      }
     },
   });
 

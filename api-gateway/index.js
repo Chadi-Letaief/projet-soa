@@ -56,6 +56,22 @@ app.post('/users', async (req, res) => {
     res.status(500).json({ error: err.details });
   }
 });
+app.put('/users/:id', async (req, res) => {
+  try {
+    const user = await grpcCall(userClient, 'updateUser', { id: req.params.id, ...req.body });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
+app.delete('/users/:id', async (req, res) => {
+  try {
+    const result = await grpcCall(userClient, 'deleteUser', { id: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
 
 // Products
 app.get('/products/:id', async (req, res) => {
@@ -82,6 +98,22 @@ app.post('/products', async (req, res) => {
     res.status(500).json({ error: err.details });
   }
 });
+app.put('/products/:id', async (req, res) => {
+  try {
+    const product = await grpcCall(productClient, 'updateProduct', { id: req.params.id, ...req.body });
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
+app.delete('/products/:id', async (req, res) => {
+  try {
+    const result = await grpcCall(productClient, 'deleteProduct', { id: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
 
 // Orders
 app.get('/orders/:id', async (req, res) => {
@@ -96,6 +128,22 @@ app.post('/orders', async (req, res) => {
   try {
     const order = await grpcCall(orderClient, 'createOrder', req.body);
     res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
+app.put('/orders/:id', async (req, res) => {
+  try {
+    const order = await grpcCall(orderClient, 'updateOrderStatus', { id: req.params.id, status: req.body.status });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: err.details });
+  }
+});
+app.delete('/orders/:id', async (req, res) => {
+  try {
+    const result = await grpcCall(orderClient, 'deleteOrder', { id: req.params.id });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.details });
   }
@@ -118,6 +166,12 @@ const typeDefs = `#graphql
     createUser(name: String!, email: String!): User
     createProduct(name: String!, description: String!, price: Float!, stock: Int!): Product
     createOrder(user_id: String!, product_id: String!, quantity: Int!): Order
+    updateUser(id: String!, name: String!, email: String!): User
+    updateProduct(id: String!, name: String!, description: String!, price: Float!, stock: Int!): Product
+    updateOrderStatus(id: String!, status: String!): Order
+    deleteUser(id: String!): Boolean
+    deleteProduct(id: String!): Boolean
+    deleteOrder(id: String!): Boolean
   }
 `;
 
@@ -135,6 +189,21 @@ const resolvers = {
     createUser: (_, args) => grpcCall(userClient, 'createUser', args),
     createProduct: (_, args) => grpcCall(productClient, 'createProduct', args),
     createOrder: (_, args) => grpcCall(orderClient, 'createOrder', args),
+    updateUser: (_, args) => grpcCall(userClient, 'updateUser', args),
+    updateProduct: (_, args) => grpcCall(productClient, 'updateProduct', args),
+    updateOrderStatus: (_, args) => grpcCall(orderClient, 'updateOrderStatus', args),
+    deleteUser: async (_, { id }) => {
+      const res = await grpcCall(userClient, 'deleteUser', { id });
+      return res.success;
+    },
+    deleteProduct: async (_, { id }) => {
+      const res = await grpcCall(productClient, 'deleteProduct', { id });
+      return res.success;
+    },
+    deleteOrder: async (_, { id }) => {
+      const res = await grpcCall(orderClient, 'deleteOrder', { id });
+      return res.success;
+    },
   }
 };
 

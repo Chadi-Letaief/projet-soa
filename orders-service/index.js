@@ -72,6 +72,58 @@ server.addService(ordersProto.OrderService.service, {
         callback({ code: grpc.status.NOT_FOUND, details: 'Order not found' });
       }
     });
+  },
+  updateOrderStatus: (call, callback) => {
+    const { id, status } = call.request;
+    db.run(
+      "UPDATE orders SET status = ? WHERE id = ?",
+      [status, id],
+      function (err) {
+        if (err) {
+          callback({ code: grpc.status.INTERNAL, details: 'Internal Server Error' });
+        } else if (this.changes === 0) {
+          callback({ code: grpc.status.NOT_FOUND, details: 'Order not found' });
+        } else {
+          db.get("SELECT * FROM orders WHERE id = ?", [id], (err, row) => {
+            callback(null, row);
+          });
+        }
+      }
+    );
+  },
+  deleteOrder: (call, callback) => {
+    const orderId = call.request.id;
+    db.get("SELECT * FROM orders WHERE id = ?", [orderId], (err, row) => {
+      if (err) {
+        callback({ code: grpc.status.INTERNAL, details: 'Internal Server Error' });
+      } else if (!row) {
+        callback(null, { success: false });
+      } else {
+        db.run("DELETE FROM orders WHERE id = ?", [orderId], async function (delErr) {
+          if (delErr) {
+            callback({ code: grpc.status.INTERNAL, details: 'Internal Server Error' });
+          } else {
+            const event = {
+              type: 'ORDER_CANCELLED',
+              orderId: orderId,
+              productId: row.product_id,
+              userId: row.user_id,
+              quantity: row.quantity
+            };
+            try {
+              await producer.send({
+                topic: 'order-events',
+                messages: [{ value: JSON.stringify(event) }],
+              });
+              console.log(`Event ORDER_CANCELLED sent for order ${orderId}`);
+            } catch (kafkaErr) {
+              console.error('Failed to send Kafka event:', kafkaErr);
+            }
+            callback(null, { success: true });
+          }
+        });
+      }
+    });
   }
 });
 
